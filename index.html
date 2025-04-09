@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connect 4 Game</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f8ff;
+            padding: 20px;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 500px;
+            margin-bottom: 10px;
+        }
+        
+        .player-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .player-disc {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        
+        .active-player {
+            background-color: #e0e0e0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transform: scale(1.05);
+        }
+        
+        #game-board {
+            background-color: #1e3799;
+            border-radius: 10px;
+            padding: 15px;
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            grid-gap: 10px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        }
+        
+        .column {
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 10px;
+            cursor: pointer;
+        }
+        
+        .column:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        }
+        
+        .cell {
+            width: 60px;
+            height: 60px;
+            background-color: #f0f8ff;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .disc {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            position: absolute;
+            transition: transform 0.5s ease;
+        }
+        
+        .red-disc {
+            background-color: #e74c3c;
+            box-shadow: inset 0 0 10px #c0392b;
+        }
+        
+        .yellow-disc {
+            background-color: #f1c40f;
+            box-shadow: inset 0 0 10px #f39c12;
+        }
+        
+        .drop-animation {
+            animation: drop 0.5s ease-in-out;
+        }
+        
+        @keyframes drop {
+            0% {
+                transform: translateY(-300px);
+            }
+            75% {
+                transform: translateY(10px);
+            }
+            100% {
+                transform: translateY(0);
+            }
+        }
+        
+        .controls {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        .win-line {
+            position: absolute;
+            background-color: rgba(255, 255, 255, 0.7);
+            z-index: 10;
+            pointer-events: none;
+        }
+        
+        #game-message {
+            height: 30px;
+            margin-top: 10px;
+            color: #2c3e50;
+            font-weight: bold;
+            font-size: 18px;
+            text-align: center;
+        }
+        
+        .win-message {
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        /* Responsive design */
+        @media (max-width: 600px) {
+            .cell {
+                width: 40px;
+                height: 40px;
+            }
+            
+            .disc {
+                width: 35px;
+                height: 35px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Connect 4</h1>
+    
+    <div class="game-container">
+        <div class="game-info">
+            <div class="player-info" id="player1" data-player="1">
+                <div class="player-disc red-disc"></div>
+                <span>Player 1</span>
+            </div>
+            <div class="player-info" id="player2" data-player="2">
+                <div class="player-disc yellow-disc"></div>
+                <span>Player 2</span>
+            </div>
+        </div>
+        
+        <div id="game-message"></div>
+        
+        <div id="game-board"></div>
+        
+        <div class="controls">
+            <button id="reset-btn">New Game</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Game configuration
+            const ROWS = 6;
+            const COLS = 7;
+            const EMPTY = 0;
+            const PLAYER1 = 1;
+            const PLAYER2 = 2;
+            
+            // Game state
+            let gameBoard = [];
+            let currentPlayer = PLAYER1;
+            let gameActive = true;
+            let moveCount = 0;
+            
+            // DOM elements
+            const boardElement = document.getElementById('game-board');
+            const resetButton = document.getElementById('reset-btn');
+            const messageElement = document.getElementById('game-message');
+            const player1Element = document.getElementById('player1');
+            const player2Element = document.getElementById('player2');
+            
+            // Initialize the game
+            function initGame() {
+                // Create empty board
+                gameBoard = Array(ROWS).fill().map(() => Array(COLS).fill(EMPTY));
+                boardElement.innerHTML = '';
+                
+                // Create the board columns
+                for (let col = 0; col < COLS; col++) {
+                    const columnElement = document.createElement('div');
+                    columnElement.className = 'column';
+                    columnElement.dataset.col = col;
+                    
+                    // Add cells to the column
+                    for (let row = 0; row < ROWS; row++) {
+                        const cellElement = document.createElement('div');
+                        cellElement.className = 'cell';
+                        cellElement.dataset.row = row;
+                        cellElement.dataset.col = col;
+                        columnElement.appendChild(cellElement);
+                    }
+                    
+                    // Add column to board
+                    boardElement.appendChild(columnElement);
+                    
+                    // Add click event
+                    columnElement.addEventListener('click', handleColumnClick);
+                }
+                
+                // Reset game state
+                currentPlayer = PLAYER1;
+                gameActive = true;
+                moveCount = 0;
+                
+                // Update UI
+                updatePlayerIndicator();
+                messageElement.textContent = '';
+                messageElement.classList.remove('win-message');
+            }
+            
+            // Handle column click
+            function handleColumnClick(event) {
+                if (!gameActive) return;
+                
+                const col = parseInt(event.currentTarget.dataset.col);
+                const row = getAvailableRow(col);
+                
+                if (row !== -1) {
+                    dropDisc(row, col);
+                }
+            }
+            
+            // Find the lowest empty position in a column
+            function getAvailableRow(col) {
+                for (let row = 0; row < ROWS; row++) {
+                    if (gameBoard[row][col] === EMPTY) {
+                        return row;
+                    }
+                }
+                return -1; // Column is full
+            }
+            
+            // Drop a disc into the board
+            function dropDisc(row, col) {
+                // Update game board
+                gameBoard[row][col] = currentPlayer;
+                moveCount++;
+                
+                // Update UI
+                const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+                const disc = document.createElement('div');
+                disc.className = `disc ${currentPlayer === PLAYER1 ? 'red-disc' : 'yellow-disc'} drop-animation`;
+                cell.appendChild(disc);
+                
+                // Check for win
+                if (checkWin(row, col)) {
+                    endGame(`Player ${currentPlayer} wins!`);
+                    highlightWinningCells();
+                    return;
+                }
+                
+                // Check for draw
+                if (moveCount === ROWS * COLS) {
+                    endGame("It's a draw!");
+                    return;
+                }
+                
+                // Switch player
+                currentPlayer = currentPlayer === PLAYER1 ? PLAYER2 : PLAYER1;
+                updatePlayerIndicator();
+            }
+            
+            // Check if the current move results in a win
+            function checkWin(row, col) {
+                return (
+                    checkDirection(row, col, 0, 1) || // horizontal
+                    checkDirection(row, col, 1, 0) || // vertical
+                    checkDirection(row, col, 1, 1) || // diagonal /
+                    checkDirection(row, col, 1, -1)   // diagonal \
+                );
+            }
+            
+            // Check for win in a specific direction
+            function checkDirection(row, col, rowDir, colDir) {
+                const player = gameBoard[row][col];
+                let count = 1; // Start with 1 (the current disc)
+                
+                // Store winning cells
+                let winningCells = [{row, col}];
+                
+                // Check in the positive direction
+                for (let i = 1; i < 4; i++) {
+                    const newRow = row + (rowDir * i);
+                    const newCol = col + (colDir * i);
+                    
+                    if (
+                        newRow >= 0 && newRow < ROWS &&
+                        newCol >= 0 && newCol < COLS &&
+                        gameBoard[newRow][newCol] === player
+                    ) {
+                        count++;
+                        winningCells.push({row: newRow, col: newCol});
+                    } else {
+                        break;
+                    }
+                }
+                
+                // Check in the negative direction
+                for (let i = 1; i < 4; i++) {
+                    const newRow = row - (rowDir * i);
+                    const newCol = col - (colDir * i);
+                    
+                    if (
+                        newRow >= 0 && newRow < ROWS &&
+                        newCol >= 0 && newCol < COLS &&
+                        gameBoard[newRow][newCol] === player
+                    ) {
+                        count++;
+                        winningCells.push({row: newRow, col: newCol});
+                    } else {
+                        break;
+                    }
+                }
+                
+                // Store winning cells if we have a win
+                if (count >= 4) {
+                    window.winningCells = winningCells;
+                    return true;
+                }
+                
+                return false;
+            }
+            
+            // Highlight winning cells
+            function highlightWinningCells() {
+                if (!window.winningCells || window.winningCells.length < 4) return;
+                
+                // Sort cells to get proper line
+                window.winningCells.sort((a, b) => {
+                    if (a.row === b.row) {
+                        return a.col - b.col;
+                    }
+                    return a.row - b.row;
+                });
+                
+                // Highlight winning cells
+                for (const cell of window.winningCells) {
+                    const cellElement = document.querySelector(`.cell[data-row="${cell.row}"][data-col="${cell.col}"] .disc`);
+                    if (cellElement) {
+                        cellElement.style.boxShadow = "0 0 15px 5px white";
+                    }
+                }
+            }
+            
+            // End the game
+            function endGame(message) {
+                gameActive = false;
+                messageElement.textContent = message;
+                messageElement.classList.add('win-message');
+            }
+            
+            // Update the player indicator
+            function updatePlayerIndicator() {
+                player1Element.classList.toggle('active-player', currentPlayer === PLAYER1);
+                player2Element.classList.toggle('active-player', currentPlayer === PLAYER2);
+            }
+            
+            // Reset the game
+            resetButton.addEventListener('click', initGame);
+            
+            // Initialize the game on load
+            initGame();
+        });
+    </script>
+</body>
+</html>
